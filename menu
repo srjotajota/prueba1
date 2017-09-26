@@ -1,0 +1,194 @@
+#!/bin/bash
+#IPW=`ifconfig | tail -9 | grep 'inet ' | awk '{ print $2 }'`
+DIRE="/root/Escritorio/pruebal.txt"
+DIRS="/root/Escritorio/pruebaf.txt"
+RW=`ifconfig | grep wlan | cat -n | awk '{ printf $1}' | tail -n1`
+function menuprincipal {
+	while :
+	do
+	clear
+	echo "Elige que quieres hacer"
+	echo ""
+	echo "1. Menu RaspberryPI3"f
+	echo "2. Airodump"
+	echo "3. Cambiar configuracion"
+	echo "99. Salida"
+	echo "Elige una opcion: "
+	read menup
+	case $menup in
+		1)raspberry;
+		;;
+		2)airodump;
+		;;
+		3)config;
+		;;
+		99)echo "Adios :)";
+		exit 1;;
+		*) echo "$opc no es una opcion valida";
+		read foo;;
+		esac
+		done
+		read $*;
+}
+
+
+function raspberry {
+	while :
+	
+	do
+	clear
+	echo "Elige como te quieres conectar a la raspberry pi3"
+	echo "1. Ver conexion a la raspberry(necesario la 1º vez)"
+	echo "2. Conectar por ethernet"
+	echo "3. Conectar por Wifi-Hotspot"
+	echo "4. Detener por wifi #" 
+	echo "5. Detener por ethernet #"
+	echo "6. Mandar paquete de actualizaciones"
+	echo "7. Ver dispositivos detectados"
+	echo "99. Atras"
+	echo -n "Elige una opcion: "
+	read opcion
+	#las pausas van con read $*;
+	#ifconfig | grep 'inet ' | head -3 | tail -1 | cut -f1
+	
+
+
+	case $opcion in
+
+	1)echo "Veamos por donde esta conectada la raspberry";
+	ifconfig eth0 down;
+	ifconfig eth0 up;
+	IPE=`ifconfig eth0 | grep inet | awk '{ print $2 }'`;
+	MACE=`ifconfig eth0 | grep ether | awk '{ print $2 }'`;
+	ifconfig wlan0 down;
+	ifconfig wlan0 up;
+	MACW=`ifconfig wlan0 | grep ether | awk '{ print $2 }'`;
+	IPW=`ifconfig wlan0 | grep inet | awk '{ print $2 }' `;
+	if [ -z $IPW ];
+	then
+		echo "Ninguna red wifi detectada, cree un hotspot o conectese al mismo wifi"
+		echo "al que esta conectada la raspberry"
+	else
+		echo "La ip de tu wlan es $IPW, con una MAC $MACW"
+	fi
+	if [ -z $IPE ];
+	then
+		echo "Ninguna conexion a ethernet detectada, puede que"
+		echo "necesite modificar la configuracion de raspberry (proximamente)"
+	else 
+		echo "La ip de tu ethernet es: $IPE, con una MAC $MACE";
+	fi
+		read $*
+	if [ -z " $IPE | $IPW " ];
+	then
+		exit 1;
+	else
+		echo "Escaneo en progreso..."
+		nmap -F $IPW/24 > $DIRE
+		echo "Final del escaneo, procesando datos"
+		LIN=`grep -n Rasp $DIRE | awk -F ":" '{ print $1 }' `;
+	if [ -n $LIN ]; 
+	then
+		LIN2=`head -n$LIN $DIRE | cat -n | awk 'length < 8 '| tail -n1 | awk '{ print $1 }'`;
+		LIN2=`expr $LIN - $LIN2`;
+		head -n$LIN $DIRE | tail -n$LIN2 > $DIRS;
+		MACWR=`grep mac $DIRS | awk '{ print $3}'`;
+		IPWR=`grep Nmap pruebafin.txt | awk '{ print $5}'`;
+		#awk '/'$ip'/' $DIRE asi con '' si
+		read $*;
+		
+	else
+		echo "No hay ninguna Raspberry conectada a $IPW (o al menos aun no se ha detectado)";
+	read $*;
+	fi
+	fi
+	;;
+	#istalar el sshpass
+
+
+
+	2)echo "Preparando ethernet";
+	ifconfig eth0 down;
+	ifconfig eth0 up;
+	echo "Ahora a conectarse a la raspberry";
+	echo "Primero define el usuario (defecto pi)";
+	read usuario;
+	if [$usuario = $hueco ]; then
+	usuario="pi";
+	fi
+	echo "Introduce la clave (defecto raspberry)"
+	read CLAVER;
+	if [ $CLAVER = $hueco ];
+	then
+	CLAVER="raspberry";
+	else
+	fi
+	sshpass -p CLAVER ssh $IPWR -l $usuario;
+	read $*;
+	;;
+
+	3)echo "Preparando Wifi-Hotspot";
+	#aqui mirar como configurar la hotspot
+	echo "Ahora a conectarse a la raspberry";
+	echo "Te vas a conectar al dispositivo $MACWR"
+	echo "Primero define el usuario (defecto pi)";
+	read usuario;
+	if [$usuario = $hueco ]; then
+	usuario="pi";
+	fi
+	echo "Introduce la clave (defecto raspberry)"
+	read CLAVER;
+	if [ $CLAVER = $hueco ];
+	then
+	CLAVER="raspberry";
+	else
+	fi
+	sshpass -p raspberry ssh $IPWR -l $usuario;
+	read $*;
+	;;
+
+	4)echo "Veamos si esta conectada por ethernet";
+	sudo nmap -F 10.0.0.0/24;
+	read $*;
+	;;
+
+	5)echo "Veamos si esta conectada por ethernet";
+	sudo nmap -F 10.42.0.0/24;
+	read $*;
+	;;
+	
+	6)echo "vamos a actualizar esto"
+	ssh $IPWR -l pi apt-get install -y nmap wireshark wifite zenmap aircrack-ng tor macchanger driftnet ettercap-graphical bluedevil wifi-radar x11vnc;
+	read $*;
+	echo "apt-get install -y nmap wireshark wifite zenmap aircrack-ng tor macchanger driftnet ettercap-graphical bluedevil wifi-radar x11vnc";
+	;;
+	
+	#Problema con los if anidados
+	
+	
+	
+	99)echo "Atras";
+	menuprincipal;;
+	*) echo "$opc no es una opcion valida";
+	read foo;;
+	esac
+	done
+}
+function config {
+	echo "Elige que es lo que quieres hacer"
+	echo ""
+	echo "1. Cambiar directorios"
+	echo "2. Añadir dispositivos"
+	echo "99. Atras"
+}
+
+function airodump {
+echo "Bienvenido al menu de airodump"
+echo "Elige que "
+read $*
+}
+#whereis para ver si el paquete esta 
+menuprincipal
+
+
+
